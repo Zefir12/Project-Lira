@@ -3,17 +3,27 @@ from functions import napisy
 
 
 class Chunk:
-    def __init__(self, x, y, ids, scale, obraz):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.ids = ids
+        self.modification_date = 0
+        self.idChunk = (x, y)
         self.square_table = {}
         self.stabilized = False
         self.chunk_visualization = None
-        self.neighbourChunks = [(ids[0], ids[1] + 1), (ids[0] + 1, ids[1]), (ids[0], ids[1] - 1), (ids[0] - 1, ids[1])]
-        self.scale = scale
-        self.obraz = obraz
+        self.neighbourChunks = [(x, y + 1), (x + 1, y), (x, y - 1), (x - 1, y)]
+        self.scale = None
+        self.obraz = None
         self.ofpo = [0, 0]
+
+    def save_chunk_into_json(self):
+        sqtable = {}
+        for square in self.square_table:
+            sqtable[str(square)] = self.square_table[square].save_square_into_json()
+
+        return {'x': self.x,
+                'y': self.y,
+                's_t': sqtable}
 
     def update_obraz(self, obraz):
         self.obraz = obraz

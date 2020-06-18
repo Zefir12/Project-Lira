@@ -5,20 +5,22 @@ from chunk import Chunk
 from square import Square
 from smallSquare import SmallSquare
 from functions import noise, round_up
+import json
 
 
 class Map:
-    def __init__(self, name, identyfikator):
+    def __init__(self, name, identyfikator, seed):
         self.name = name
-        self.OfPo = [0, 0]
         self.identyfikator = identyfikator
         self.chunklist = {}
-        self.scale = 32
-        self.map_seed = 0
-        self.users_visible_chunks = {'MapViever': []}
+        self.generated_chunks = []
+        self.chunks_saved_into_files = []
+        self.map_seed = seed
+        self.users_visible_chunks = {}
+        self.players = {}
 
-    def create_chunk(self, position_x, position_y, ids, obraz, frequency=1, size_x=8, size_y=8):
-        chunk = Chunk(position_x, position_y, ids, self.scale, obraz)
+    def create_chunk(self, position_x, position_y, frequency=1, size_x=8, size_y=8):
+        chunk = Chunk(position_x, position_y)
         gen = OpenSimplex(seed=self.map_seed)
         for y in range(size_x):
             for x in range(size_y):
@@ -27,8 +29,9 @@ class Map:
                 value = noise(frequency * nx, frequency * ny, gen) * 0.1
                 value += noise(frequency * nx / 9, frequency * ny / 9, gen) * 0.6
                 value += noise(frequency * nx / 3, frequency * ny / 3, gen) * 0.3
+                value = round(value, 4)
                 if value < 0.5:
-                    chunk.square_table[(x, y)] = Square(x, y, [value * 25, value * 255, value * 25], (x, y), ids, value, self.scale, obraz)
+                    chunk.square_table[(x, y)] = Square(x, y, [round(value * 25), round(value * 255), round(value * 25)], (position_x, position_y), value)
                     for yy in range(int(size_x/2)):
                         for xx in range(int(size_y/2)):
                             nxx = (xx/4 + (position_x * size_x) + (x * size_x/8)) / size_x
@@ -36,20 +39,42 @@ class Map:
                             valuee = noise(frequency/7 * nxx, frequency/7 * nyy, gen)*0.7
                             valuee += noise(frequency * nxx, frequency*3 * nyy, gen)*0.2
                             valuee += noise(frequency * 6 * nxx, frequency * nyy, gen) * 0.1
-                            valuee += noise(frequency * 60 * nxx, frequency *60* nyy, gen) * 0.2
+                            valuee += noise(frequency * 60 * nxx, frequency * 60 * nyy, gen) * 0.2
                             valuee += noise(frequency * 200 * nxx, frequency * 200 * nyy, gen) * 0.1
-                            value2 = noise(frequency*200 * nxx, frequency*200 * nyy, gen)
-                            valuewater =  noise(frequency/2 * nxx, frequency/2 * nyy, gen)
+
+                            valuee = round(valuee, 4)
+                            value2 = round(noise(frequency*200 * nxx, frequency*200 * nyy, gen), 4)
+                            valuewater = round(noise(frequency/2 * nxx, frequency/2 * nyy, gen), 4)
 
                             if valuee < 0.5:
-                                chunk.square_table[(x, y)].small_squares[(xx, yy)] = SmallSquare(xx, yy, [value * 25, (valuee * 70) + 10, value * 25], (x, y), (position_x, position_y), ids, valuee, self.scale, obraz, value2)
+                                chunk.square_table[(x, y)].small_squares[(xx, yy)] = SmallSquare(xx, yy, [round(value * 25), round(valuee * 70) + 10, round(value * 25)], (x, y), (position_x, position_y), valuee, value2)
                                 chunk.square_table[(x, y)].small_squares[(xx, yy)].rodzaj = 'Tree'
                             if valuewater < 0.26:
-                                chunk.square_table[(x, y)].small_squares[(xx, yy)] = SmallSquare(xx, yy, [10, 10, 250*valuewater], (x, y), (position_x, position_y), ids, valuee, self.scale, obraz, value2)
+                                chunk.square_table[(x, y)].small_squares[(xx, yy)] = SmallSquare(xx, yy, [10, 10, round(250*valuewater)], (x, y), (position_x, position_y), valuee, value2)
                                 chunk.square_table[(x, y)].small_squares[(xx, yy)].rodzaj = 'Water'
+        return chunk
 
-
-
+    def load_chunk(self, json, ofpo, obraz, scale):
+        chunk = Chunk(json['x'], json['y'])
+        chunk.ofpo = ofpo
+        chunk.scale = scale
+        chunk.obraz = obraz
+        chunk.neighbourChunks = [(json['x'], json['y'] + 1), (json['x'] + 1, json['y']), (json['x'], json['y'] - 1), (json['x'] - 1, json['y'])]
+        for idSq in json['s_t']:
+            square = json['s_t'][idSq]
+            chunk.square_table[(square['x'], square['y'])] = Square(square['x'], square['y'], square['c'], (json['x'], json['y']), square['v'])
+            chunk.square_table[(square['x'], square['y'])].neighbours = square['n']
+            chunk.square_table[(square['x'], square['y'])].ofpo = ofpo
+            chunk.square_table[(square['x'], square['y'])].scale = scale
+            chunk.square_table[(square['x'], square['y'])].obraz = obraz
+            for idSm in square['s_s']:
+                small = square['s_s'][idSm]
+                chunk.square_table[(square['x'], square['y'])].small_squares[(small['x'], small['y'])] = SmallSquare(small['x'], small['y'], small['c'], (square['x'], square['y']), (json['x'], json['y']), small['v'], small['v2'])
+                chunk.square_table[(square['x'], square['y'])].small_squares[(small['x'], small['y'])].rodzaj = small['r']
+                chunk.square_table[(square['x'], square['y'])].small_squares[(small['x'], small['y'])].neighbours = small['n']
+                chunk.square_table[(square['x'], square['y'])].small_squares[(small['x'], small['y'])].ofpo = ofpo
+                chunk.square_table[(square['x'], square['y'])].small_squares[(small['x'], small['y'])].scale = scale
+                chunk.square_table[(square['x'], square['y'])].small_squares[(small['x'], small['y'])].obraz = obraz
         return chunk
 
     def stabilize_chunk(self, ids):
@@ -93,12 +118,12 @@ class Map:
         for b in self.chunklist:
             self.chunklist[b].update_squares_positions()
 
-    def find_chunks_visible_on_monitor(self, ekran, user):
+    def find_chunks_visible_on_monitor(self, ekran, user, ofpo, scale):
         list_chunks = []
-        for bx in range(round_up(ekran[0]/(8*self.scale))+2):
-            for by in range(round_up(ekran[1]/(8*self.scale))+2):
-                list_chunks.append((-(bx + round_up(self.OfPo[0]/(8*self.scale))) + round_up(ekran[0]/(8*self.scale)),
-                                    -(by + round_up(self.OfPo[1]/(8*self.scale))) + round_up(ekran[1]/(8*self.scale))))
+        for bx in range(round_up(ekran[0]/(8*scale))+1):
+            for by in range(round_up(ekran[1]/(8*scale))+1):
+                list_chunks.append((-(bx + round_up(ofpo[0]/(8*scale))) + round_up(ekran[0]/(8*scale)),
+                                    -(by + round_up(ofpo[1]/(8*scale))) + round_up(ekran[1]/(8*scale))))
         self.users_visible_chunks[user] = list_chunks
 
     def update_scales_visible_on_monitor(self, scale, user):
@@ -170,3 +195,14 @@ class Map:
         for position in self.users_visible_chunks[user]:
             if position in self.chunklist:
                 self.chunklist[position].update_small_squares_positions()
+
+    def growing_trees(self):
+        lista_drzew = []
+        for position in self.chunklist:
+            for square in self.chunklist[position].square_table:
+                for ssquare in self.chunklist[position].square_table[square].small_squares:
+                    tree = self.chunklist[position].square_table[square].small_squares[ssquare].grow_tree()
+                    if tree:
+                        lista_drzew.append(tree)
+        return lista_drzew
+

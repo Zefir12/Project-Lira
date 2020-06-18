@@ -14,17 +14,14 @@ class Client:
 
     def connect(self):
         self.client.connect(self.addr)
-        self.id = pickle.loads(self.client.recv(2048))
+        self.id = pickle.loads(self.client.recv(262144))
         self.client.send(pickle.dumps(self.name))
 
-
-
-    def send(self, data , prinnt):
+    def send(self, data, prinnt):
         self.client.send(data)
-        dane = self.client.recv(1024)
-        if dane is not None:
-            if prinnt:
-                print(pickle.loads(dane))
+        dane = self.client.recv(262144)
+        if prinnt:
+            print(pickle.loads(dane))
 
         if self.close_connection:
             self.client.close()

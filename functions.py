@@ -38,14 +38,13 @@ def napisy(co, x, y, czcionka, obraz, kolor=(0, 0, 0)):
     obraz.blit(label2, [x, y])
 
 
-def przycisk(x, y, sizex, sizey, zmiennax, zmiennay, event, obraz, zmiennatrue=True, zmiennafalse=False, r=0, g=0, b=0, text=None, textsize=1):
-    pygame.draw.rect(obraz, [r, g, b], [x, y, sizex, sizey])
-    if text is not None:
-        napisy(text, x, y, textsize)
-    if x < zmiennax < x+sizex and y < zmiennay < y + sizey and event:
-        return zmiennatrue
-    else:
-        return zmiennafalse
+def check_distance_between_rects(rect1, rect2):
+    prawo = rect2[0] - (rect1[0] + rect1[2])
+    lewo = rect1[0] - (rect2[0] + rect2[2])
+    dol = rect2[1] - (rect1[1] + rect1[3])
+    gora = rect1[1] - (rect2[1] + rect2[3])
+
+    return [prawo, lewo, dol, gora]
 
 
 def redraw_game(r, g, b, obraz, image=False, x=0, y=0):

@@ -2,24 +2,33 @@ import pygame
 
 
 class SmallSquare:
-    def __init__(self, x, y, color, idd, idx, chunk_ids, value, scale, obraz , value2):
+    def __init__(self, x, y, color, idSquare, idChunk, value, value2):
         self.x = x
         self.y = y
         self.value = value
         self.value2 = value2
         self.rodzaj = 'Tree'
         self.color = color
-        self.idx = idx
-        self.idd = idd
-        self.ids = chunk_ids
+        self.idSquare = idSquare
+        self.idChunk = idChunk
+        self.idSmall = (x, y)
+        self.part_of_screen = [0, 0]
         self.neighbours = [False, False, False, False]
         self.have_shade = None
-        self.part_of_screen = [0, 0]
         self.position = [0, 0]
-        self.scale = scale
+        self.scale = None
         self.ofpo = [0, 0]
-        self.obraz = obraz
-        self.part_of_screen = [0, 0]
+        self.obraz = None
+        self.rect = [0, 0, 0, 0]
+
+    def save_small_into_json(self):
+        return {'x': self.x,
+                'y': self.y,
+                'v': self.value,
+                'v2': self.value2,
+                'r': self.rodzaj,
+                'c': self.color,
+                'n': self.neighbours,}
 
     def update_obraz(self, obraz):
         self.obraz = obraz
@@ -31,17 +40,18 @@ class SmallSquare:
         self.ofpo = ofpo
 
     def update_position(self):
-        self.position = [(self.x * self.scale/4) + (self.idd[0] * self.scale) + (self.ids[0] * self.scale*8) + self.ofpo[0],
-                         (self.y * self.scale/4) + (self.idd[1] * self.scale) + (self.ids[1] * self.scale*8) + self.ofpo[1]]
+        self.position = [(self.x * self.scale/4) + (self.idSquare[0] * self.scale) + (self.idChunk[0] * self.scale*8) + self.ofpo[0],
+                         (self.y * self.scale/4) + (self.idSquare[1] * self.scale) + (self.idChunk[1] * self.scale*8) + self.ofpo[1]]
 
     def draw(self):
-        pygame.draw.rect(self.obraz, self.color, [self.position[0], self.position[1], self.scale/4, self.scale/4])
+        self.rect = [self.position[0], self.position[1], self.scale / 4 + 1, self.scale / 4 + 1]
+        pygame.draw.rect(self.obraz, self.color, self.rect)
 
     def draw_shade(self, ekran, multer):
         if self.rodzaj == 'Tree':
             self.skala = (self.scale / 4) * (multer/4)
-            self.Ux = self.position[0] + ((self.position[0] - (ekran[0]/2))/((2500*self.value2)/self.scale)) + self.skala/multer
-            self.Uy = self.position[1] + ((self.position[1] - (ekran[1]/2))/((2500*self.value2)/self.scale)) + self.skala/multer
+            self.Ux = self.position[0] + ((self.position[0] - (ekran[0]/2))/((200+2300*self.value2)/self.scale)) + self.skala/multer
+            self.Uy = self.position[1] + ((self.position[1] - (ekran[1]/2))/((200+2300*self.value2)/self.scale)) + self.skala/multer
             self.UGL = [self.Ux, self.Uy]
             self.UGP = [self.Ux + self.skala*3, self.Uy]
             self.UDL = [self.Ux, self.Uy + self.skala*3]
@@ -74,8 +84,8 @@ class SmallSquare:
     def draw_tree_outline(self, ekran, multer):
         if self.rodzaj == 'Tree':
             self.skala = (self.scale / 4) * (multer/4)
-            self.Ux = self.position[0] + ((self.position[0] - (ekran[0]/2))/((2500*self.value2)/self.scale)) + self.skala/multer
-            self.Uy = self.position[1] + ((self.position[1] - (ekran[1]/2))/((2500*self.value2)/self.scale)) + self.skala/multer
+            self.Ux = self.position[0] + ((self.position[0] - (ekran[0]/2))/((200 + 2300*self.value2)/self.scale)) + self.skala/multer
+            self.Uy = self.position[1] + ((self.position[1] - (ekran[1]/2))/((200 + 2300*self.value2)/self.scale)) + self.skala/multer
             self.UGL = [self.Ux, self.Uy]
             self.UGP = [self.Ux + self.skala*3, self.Uy]
             self.UDL = [self.Ux, self.Uy + self.skala*3]
@@ -89,3 +99,13 @@ class SmallSquare:
             pygame.draw.line(self.obraz, [0, 0, 0], self.UGL, self.DGL, 2)
             pygame.draw.line(self.obraz, [0, 0, 0], self.UDL, self.DDL, 2)
             pygame.draw.line(self.obraz, [0, 0, 0], self.UDP, self.DDP, 2)
+
+    def grow_tree(self):
+        if self.rodzaj == "Tree":
+            if self.value2 > 0.1:
+                self.value2 *= 0.94
+                return False
+            else:
+                self.value2 = 1
+                return [self.idChunk, self.idSquare, self.idSmall]
+
